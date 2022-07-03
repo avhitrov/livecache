@@ -23,6 +23,45 @@
 
 CacheItem может быть использован самостоятельно для хранения, например, словаря или же в составе CacheBucket.
 
+#### Пример
+Инициализация:
+ 
+    func NewFactory(ctx context.Context) *ServiceFactory {
+        coldStartCache := livecache.NewCacheItem(
+            func(ctx context.Context) (interface{}, error) {
+                return someservice.FunctionToRetrieveData(ctx, someParamFromAbove, anotherParamFromAbove)
+            },
+            DefaultCacheTTLDurationType,
+            DefaultGetterTTLDurationType,
+        )
+    
+        // При необходимости можно прогреть:
+        _, err := coldStartCache.Get(ctx)
+        if err != nil {
+            fmt.Errorf("%v - cache heating error", err)
+        }
+    
+        return &ServiceFactory{
+            serviceCache: coldStartCache,
+        }
+    }
+
+Использование:
+
+    func (s *Service) DataRetriever(ctx context.Context) ([]string, error) {
+        cacheItem, err := s.recommendationsRecmicColdCache.Get(ctx)
+        if err != nil {
+            return nil, err
+        }
+    
+        cacheResult, ok := cacheItem.([]string)
+        if !ok {
+            return nil, errors.New("unexpected data type for cacheResult")
+        }
+    
+        return cacheResult, nil
+    }
+
 ### Объект CacheBucket
 
 Мапа из объектов CacheItem, которая может быть ограничена по размеру или времени жизни элементов. В случае наличия любого из ограничителей, при инициализации запускается сборщик мусора, который раз в 100 мс (умолчание, может быть переписано) проверяет размер и состояние бакета на соответствие ограничениям. 
@@ -30,3 +69,41 @@ CacheItem может быть использован самостоятельн�
 - В случае выхода размера за ограничение, удаляются наиболее старые по LastAccessed значения. Сложность алгоритма определения "выселенцев" - O(N*ln(n))
 
 TTL всех элементов бакета одинаковый, задается при инициализации бакета. Создание элемента кеша происходит при первом обращении к методу Get бакета, при этом геттер сохраняется в CacheItem и в дальнейшем не обновляется.
+
+#### Пример
+Инициализация:
+
+    type Rating struct {
+        ...
+        similarsPackageCache livecache.CacheBucket
+    }
+    
+    func (r *Rating) Initialize() {
+        r.similarsPackageCache = livecache.NewCacheBucket(
+            CacheTTLDurationType,  // Время истечения данных во всех элементах
+            GetterTTLDurationType, // Максимальное время работы геттера
+            nil,                   // Ключи не удаляются
+            0,                     // Количество ключей не ограничено
+        )
+    }
+
+Использование:
+
+    func (r *Rating) DataRetriever(ctx context.Context, packageID string) ([]schema.ResponseItem, error) {
+        getter := func(ctx context.Context) (interface{}, error) {
+            similars, err := r.FunctionToRetrieveData(ctx, packageID)
+            return similars, err
+        }
+    
+        res, err := r.similarsPackageCache.Get(ctx, packageID, getter)
+        if r.similarsPackageCache.IsDataEmpty(err) {
+            return nil, nil
+        }
+        if err != nil {
+            return nil, err
+        }
+        result, ok := res.([]*models.Gravity)
+        if !ok {
+            return nil, errors.New("can't cast interface{} to []*models.Gravity")
+        }
+    }
