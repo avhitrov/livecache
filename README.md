@@ -32,7 +32,6 @@ CacheItem может быть использован самостоятельн�
                 return someservice.FunctionToRetrieveData(ctx, someParamFromAbove, anotherParamFromAbove)
             },
             DefaultCacheTTLDurationType,
-            DefaultGetterTTLDurationType,
         )
     
         // При необходимости можно прогреть:
@@ -81,7 +80,6 @@ TTL всех элементов бакета одинаковый, задает�
     func (r *Rating) Initialize() {
         r.similarsPackageCache = livecache.NewCacheBucket(
             CacheTTLDurationType,  // Время истечения данных во всех элементах
-            GetterTTLDurationType, // Максимальное время работы геттера
             nil,                   // Ключи не удаляются
             0,                     // Количество ключей не ограничено
         )
