@@ -87,7 +87,7 @@ TTL всех элементов бакета одинаковый, задает�
 
 Использование:
 
-    func (r *Rating) DataRetriever(ctx context.Context, packageID string) ([]schema.ResponseItem, error) {
+    func (r *Rating) DataRetriever(ctx context.Context, packageID string) ([]*schema.ResponseItem, error) {
         getter := func(ctx context.Context) (interface{}, error) {
             similars, err := r.FunctionToRetrieveData(ctx, packageID)
             return similars, err
@@ -100,8 +100,10 @@ TTL всех элементов бакета одинаковый, задает�
         if err != nil {
             return nil, err
         }
-        result, ok := res.([]*models.Gravity)
+        result, ok := res.([]*schema.ResponseItem)
         if !ok {
-            return nil, errors.New("can't cast interface{} to []*models.Gravity")
+            return nil, errors.New("can't cast interface{} to []*schema.ResponseItem")
         }
+    
+        return result, nil
     }
